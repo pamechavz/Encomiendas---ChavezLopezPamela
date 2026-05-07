@@ -1,0 +1,65 @@
+:root {
+    --estado-pendiente: #6c757d;
+    --estado-transito: #0d6efd;
+    --estado-destino: #fd7e14;
+    --estado-entregado: #198754;
+    --estado-devuelto: #dc3545;
+    --color-primary: #0d6efd;
+    --color-bg: #f8f9fa;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,.07);
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--color-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main { flex: 1; }
+
+.card {
+    border: none;
+    border-radius: .5rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0,0,0,.1);
+}
+
+.stat-card { border-left: 4px solid; }
+
+.badge-estado {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .3px;
+    white-space: nowrap;
+}
+
+.badge-PE { background-color: #e9ecef; color: #495057; }
+.badge-TR { background-color: #cfe2ff; color: #084298; }
+.badge-DE { background-color: #fff3cd; color: #664d03; }
+.badge-EN { background-color: #d1e7dd; color: #0a3622; }
+.badge-DV { background-color: #f8d7da; color: #58151c; }
+
+.table tbody tr:hover {
+    background-color: rgba(13,110,253,.04);
+    cursor: pointer;
+}
+
+.alert {
+    animation: fadeAlert 5s ease forwards;
+}
+
+@keyframes fadeAlert {
+    0% { opacity: 1; max-height: 200px; }
+    70% { opacity: 1; }
+    100% { opacity: 0; max-height: 0; padding: 0; margin: 0; overflow: hidden; }
+}

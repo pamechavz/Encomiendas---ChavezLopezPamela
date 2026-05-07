@@ -14,9 +14,26 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+# config/urls.py
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
+
+# (Opcional) Personalizar los títulos del panel de administración
+admin.site.site_header = 'Sistema de Gestión de Encomiendas'
+admin.site.site_title = 'Encomiendas Admin'
+admin.site.index_title = 'Panel de Administración'
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    
+    # AQUÍ ES DONDE CONECTAS TU APLICACIÓN 'ENVIOS'
+    path('', include('envios.urls')),
+    
 ]
+
+# Configuración para servir archivos estáticos (CSS/JS) y multimedia en modo desarrollo
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
