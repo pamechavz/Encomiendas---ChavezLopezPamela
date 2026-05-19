@@ -14,13 +14,42 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Encomienda',
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('codigo', models.CharField(max_length=20, unique=True)),
-                ('descripcion', models.TextField()),
-                ('peso_kg', models.DecimalField(decimal_places=2, max_digits=8)),
-                ('estado', models.CharField(choices=[('PE', 'Pendiente'), ('TR', 'En tránsito'), ('EN', 'Entregado'), ('DE', 'Devuelto')], default='PE', max_length=2)),
-                ('fecha_envio', models.DateTimeField(auto_now_add=True)),
-                ('fecha_entrega', models.DateTimeField(blank=True, null=True)),
+                ('id',
+                 models.AutoField(
+                     auto_created=True,
+                     primary_key=True,
+                     serialize=False,
+                     verbose_name='ID')),
+                ('codigo',
+                 models.CharField(
+                     max_length=20,
+                     unique=True)),
+                ('descripcion',
+                 models.TextField()),
+                ('peso_kg',
+                 models.DecimalField(
+                     decimal_places=2,
+                     max_digits=8)),
+                ('estado',
+                 models.CharField(
+                     choices=[
+                         ('PE',
+                          'Pendiente'),
+                         ('TR',
+                          'En tránsito'),
+                         ('EN',
+                          'Entregado'),
+                         ('DE',
+                          'Devuelto')],
+                     default='PE',
+                     max_length=2)),
+                ('fecha_envio',
+                 models.DateTimeField(
+                     auto_now_add=True)),
+                ('fecha_entrega',
+                 models.DateTimeField(
+                     blank=True,
+                     null=True)),
             ],
             options={
                 'verbose_name': 'Encomienda',

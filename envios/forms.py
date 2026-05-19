@@ -3,10 +3,21 @@ from .models import Encomienda
 from clientes.models import Cliente
 from rutas.models import Ruta
 
+
 class EncomiendaForm(forms.ModelForm):
     class Meta:
         model = Encomienda
-        fields = ['codigo', 'descripcion', 'peso_kg', 'volumen_cm3', 'remitente', 'destinatario', 'ruta', 'costo_envio', 'fecha_entrega_est', 'observaciones']
+        fields = [
+            'codigo',
+            'descripcion',
+            'peso_kg',
+            'volumen_cm3',
+            'remitente',
+            'destinatario',
+            'ruta',
+            'costo_envio',
+            'fecha_entrega_est',
+            'observaciones']
         widgets = {
             'codigo': forms.TextInput(attrs={'class': 'form-control'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -37,6 +48,6 @@ class EncomiendaForm(forms.ModelForm):
         remitente = cleaned.get('remitente')
         destinatario = cleaned.get('destinatario')
         if remitente and destinatario and remitente == destinatario:
-            raise forms.ValidationError('El remitente y el destinatario no pueden ser la misma persona.')
+            raise forms.ValidationError(
+                'El remitente y el destinatario no pueden ser la misma persona.')
         return cleaned
-        

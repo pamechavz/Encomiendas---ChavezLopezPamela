@@ -46,8 +46,6 @@ class EncomiendaQuerySet(models.QuerySet):
         )
 
 
-
-
 class ClienteQuerySet(models.QuerySet):
 
     def activos(self):
@@ -65,8 +63,6 @@ class ClienteQuerySet(models.QuerySet):
             models.Q(apellidos__icontains=termino) |
             models.Q(nro_doc__icontains=termino)
         )
-
-
 
 
 class RutaQuerySet(models.QuerySet):

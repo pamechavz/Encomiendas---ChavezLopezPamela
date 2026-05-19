@@ -1,22 +1,40 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from decimal import Decimal
+
+# Importaciones de tus otros módulos
 from clientes.models import Cliente
 from rutas.models import Ruta
 from config.choices import EstadoEnvio, EstadoGeneral
-import uuid
-from datetime import timedelta
-from django.utils import timezone
-from decimal import Decimal
 from .querysets import EncomiendaQuerySet
 
+
+class Empleado(models.Model):
+    nombre = models.CharField(max_length=100)
+    dni = models.CharField(max_length=15, unique=True)
+    cargo = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.nombre
+
+    class Meta:
+        db_table = 'empleados'
+        verbose_name = 'Empleado'
+        verbose_name_plural = 'Empleados'
+
+
 class Encomienda(models.Model):
-    objects = EncomiendaQuerySet.as_manager()  
+    objects = EncomiendaQuerySet.as_manager()
 
     codigo = models.CharField(max_length=20, unique=True)
     descripcion = models.TextField()
     peso_kg = models.DecimalField(max_digits=8, decimal_places=2)
-    volumen_cm3 = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    volumen_cm3 = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True)
 
     remitente = models.ForeignKey(
         Cliente, on_delete=models.PROTECT,
@@ -37,7 +55,7 @@ class Encomienda(models.Model):
     )
 
     empleado_registro = models.ForeignKey(
-        'envios.Empleado', on_delete=models.PROTECT,
+        'Empleado', on_delete=models.PROTECT,
         related_name='encomiendas_registradas',
         null=True, blank=True
     )
@@ -57,7 +75,13 @@ class Encomienda(models.Model):
     def __str__(self):
         return f'{self.codigo} [{self.get_estado_display()}]'
 
-   
+    # =====================
+    # PROPERTIES
+    # =====================
+
+    @property
+    def resumen(self):
+        return f"{self.codigo} - {self.estado}"
 
     @property
     def esta_entregada(self):
@@ -84,9 +108,12 @@ class Encomienda(models.Model):
     def descripcion_corta(self):
         if not self.descripcion:
             return ""
-        return self.descripcion[:50] + '...' if len(self.descripcion) > 50 else self.descripcion
+        return self.descripcion[:50] + \
+            '...' if len(self.descripcion) > 50 else self.descripcion
 
-
+    # =====================
+    # LOGIC METHODS
+    # =====================
 
     def cambiar_estado(self, nuevo_estado, empleado, observacion=''):
         if nuevo_estado == self.estado:
@@ -102,8 +129,6 @@ class Encomienda(models.Model):
 
         self.save()
 
-        from envios.models import HistorialEstado
-
         HistorialEstado.objects.create(
             encomienda=self,
             estado_anterior=estado_anterior,
@@ -111,7 +136,6 @@ class Encomienda(models.Model):
             empleado=empleado,
             observacion=observacion
         )
-
         return self
 
     def calcular_costo(self):
@@ -122,56 +146,17 @@ class Encomienda(models.Model):
             return Decimal('0.00')
 
         costo = self.ruta.precio_base
-
         if self.peso_kg > PESO_BASE:
             costo += (self.peso_kg - PESO_BASE) * PRECIO_POR_KG_EXTRA
 
         return round(costo, 2)
 
-    @classmethod
-    def crear_con_costo_calculado(
-        cls,
-        remitente,
-        destinatario,
-        ruta,
-        empleado,
-        descripcion,
-        peso_kg,
-        **kwargs
-    ):
-        """
-        Crea una encomienda con código automático y costo calculado
-        """
+    # =====================
+    # VALIDATION & SAVE
+    # =====================
 
-        # Código único
-        codigo = f'ENC-{timezone.now().strftime("%Y%m%d")}-{str(uuid.uuid4())[:6].upper()}'
-
-        # Fecha estimada según la ruta
-        fecha_estimada = timezone.now().date() + timedelta(days=ruta.dias_entrega)
-
-        # Crear objeto sin guardar aún
-        encomienda = cls(
-            codigo=codigo,
-            descripcion=descripcion,
-            peso_kg=peso_kg,
-            remitente=remitente,
-            destinatario=destinatario,
-            ruta=ruta,
-            empleado_registro=empleado,
-            fecha_entrega_est=fecha_estimada,
-            **kwargs
-        )
-
-        # Calcular costo automáticamente
-        encomienda.costo_envio = encomienda.calcular_costo()
-
-        # Guardar (esto dispara clean() también)
-        encomienda.save()
-
-        return encomienda
     def clean(self):
         errors = {}
-
         if self.remitente_id and self.destinatario_id:
             if self.remitente_id == self.destinatario_id:
                 errors['destinatario'] = ValidationError(
@@ -179,15 +164,9 @@ class Encomienda(models.Model):
                 )
 
         if self.fecha_entrega_est:
-            if self.fecha_entrega_est < timezone.now().date():
+            if not self.pk and self.fecha_entrega_est < timezone.now().date():
                 errors['fecha_entrega_est'] = ValidationError(
                     'La fecha de entrega estimada no puede ser en el pasado.'
-                )
-
-        if self.fecha_entrega_est and self.fecha_entrega_real:
-            if self.fecha_entrega_real < self.fecha_entrega_est:
-                errors['fecha_entrega_real'] = ValidationError(
-                    'La fecha de entrega real no puede ser antes de la estimada.'
                 )
 
         if errors:
@@ -202,22 +181,21 @@ class Encomienda(models.Model):
         verbose_name = 'Encomienda'
         verbose_name_plural = 'Encomiendas'
         ordering = ['-fecha_registro']
-class Empleado(models.Model):
-    nombre = models.CharField(max_length=100)
-    dni = models.CharField(max_length=15, unique=True)
-    cargo = models.CharField(max_length=50)
 
-    def __str__(self):
-        return self.nombre
-    
+
 class HistorialEstado(models.Model):
     encomienda = models.ForeignKey(
         Encomienda,
         on_delete=models.CASCADE,
-        related_name='historial'   
+        related_name='historial'
     )
     estado_anterior = models.CharField(max_length=2)
     estado_nuevo = models.CharField(max_length=2)
-    empleado = models.ForeignKey('Empleado', on_delete=models.PROTECT)
+    empleado = models.ForeignKey(Empleado, on_delete=models.PROTECT)
     observacion = models.TextField(blank=True)
     fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'historial_estados'
+        verbose_name = 'Historial de Estado'
+        verbose_name_plural = 'Historiales de Estados'

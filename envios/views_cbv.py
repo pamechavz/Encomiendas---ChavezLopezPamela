@@ -3,9 +3,16 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.contrib.messages.views import SuccessMessageMixin
-from .models import Encomienda
+from .models import Encomienda, Empleado
 from .forms import EncomiendaForm
 from config.choices import EstadoEnvio
+
+# --- Importaciones para la API ---
+from rest_framework import generics, mixins, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .serializers import EncomiendaSerializer
 
 class EncomiendaListView(LoginRequiredMixin, ListView):
     model = Encomienda
@@ -15,14 +22,13 @@ class EncomiendaListView(LoginRequiredMixin, ListView):
     ordering = ['-fecha_registro']
 
     def get_queryset(self):
+        # Aplicando optimización de la página 128
         qs = Encomienda.objects.con_relaciones()
-        
-        # Filtro por estado
+
         estado = self.request.GET.get('estado')
         if estado:
             qs = qs.filter(estado=estado)
-            
-        # Filtro de búsqueda (código o apellidos)
+
         q = self.request.GET.get('q')
         if q:
             from django.db.models import Q
@@ -40,6 +46,7 @@ class EncomiendaListView(LoginRequiredMixin, ListView):
         ctx['q'] = self.request.GET.get('q', '')
         return ctx
 
+
 class EncomiendaDetailView(LoginRequiredMixin, DetailView):
     model = Encomienda
     template_name = 'envios/detalle.html'
@@ -53,6 +60,7 @@ class EncomiendaDetailView(LoginRequiredMixin, DetailView):
         ctx['historial'] = self.object.historial.select_related('empleado')
         return ctx
 
+
 class EncomiendaCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
     model = Encomienda
     form_class = EncomiendaForm
@@ -65,13 +73,12 @@ class EncomiendaCreateView(LoginRequiredMixin, SuccessMessageMixin, CreateView):
     def form_valid(self, form):
         if not form.instance.costo_envio:
             form.instance.costo_envio = form.instance.calcular_costo() or 0.00
-
-        from envios.models import Empleado
+        
         empleado_disponible = Empleado.objects.first()
         if empleado_disponible:
             form.instance.empleado_registro = empleado_disponible
-            
         return super().form_valid(form)
+
 
 class EncomiendaUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Encomienda
@@ -81,8 +88,65 @@ class EncomiendaUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
     def get_success_url(self):
         return reverse_lazy('encomienda_detalle', kwargs={'pk': self.object.pk})
-        
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['titulo'] = 'Editar'
         return ctx
+
+
+
+class EncomiendaListAPIView(APIView):
+    """
+    Lista y crea encomiendas usando la lógica manual de APIView.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Solución de rendimiento con_relaciones() (Pág. 128)
+        encomiendas = Encomienda.objects.con_relaciones().all()
+        serializer = EncomiendaSerializer(encomiendas, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = EncomiendaSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class EncomiendaMixinAPIView(mixins.ListModelMixin,
+                            mixins.CreateModelMixin,
+                            generics.GenericAPIView):
+    """
+    Demuestra el uso de Mixins para comportamiento modular.
+    """
+    queryset = Encomienda.objects.con_relaciones()
+    serializer_class = EncomiendaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+
+class EncomiendaListCreateGeneric(generics.ListCreateAPIView):
+    """
+    Implementación final optimizada usando Generic Views.
+    """
+    queryset = Encomienda.objects.con_relaciones()
+    serializer_class = EncomiendaSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class EncomiendaDetailUpdateDestroyGeneric(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Vista genérica para operaciones de detalle y borrado.
+    """
+    queryset = Encomienda.objects.all()
+    serializer_class = EncomiendaSerializer
+    permission_classes = [IsAuthenticated]
